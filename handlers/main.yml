@@ -1,2 +1,11 @@
 ---
-# handlers file for ansible-role-plexmediaserver
+
+- name: restart plex
+  service:
+    name: plexmediaserver
+    state: restarted
+
+- name: start plex
+  service:
+    name: plexmediaserver
+    state: started

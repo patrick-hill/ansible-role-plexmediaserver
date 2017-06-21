@@ -1,0 +1,42 @@
+---
+
+- name: Stat backup target
+  stat: path={{ pms_backup_target }}
+  register: backup_dir
+
+- name: Create backup target dir
+  file: 
+    path: "{{ pms_backup_target }}"
+    state: directory
+    owner: root
+    group: root
+  when: backup_dir.stat.exists == False
+
+- name: Stat backup script dir
+  stat: path={{ pms_backup_script_dir }}
+  register: backup_script_dir
+
+- name: Create backup script dir
+  file:
+    path: "{{ pms_backup_script_dir }}"
+    state: directory
+    owner: root
+    group: root
+  when: backup_script_dir.stat.exists == False
+
+- name: Create backup script
+  template:
+    src: plex-media-server_backup.sh.j2
+    dest: "{{ pms_backup_script_dir }}/plex-media-server_backup.sh"
+    owner: root
+    group: root
+    mode: "a+x"
+
+- name: Create cron backup
+  cron: 
+    name: "Plex Media Server Backup"
+    hour: "04"
+    minute: "30"
+    user: "root"
+    job: "{{ pms_backup_script_dir }}/plex-media-server_backup.sh"
+    state: present

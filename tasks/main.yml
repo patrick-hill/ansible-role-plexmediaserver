@@ -7,5 +7,24 @@
   failed_when: check_installed.rc > 1
 
 - name: CentOS Install
-  include: "centos.yml"
-  when: ansible_distribution == 'CentOS' and check_installed.rc == 1
+  include: "install.yml"
+  notify: start plex
+  when:
+    - ansible_distribution == 'CentOS'
+    - check_installed.rc == 1
+
+- name: Configure PMS Backups
+  include: "backups.yml"
+  when:
+    - pms_backups_enabled
+
+- name: Update PMS
+  yum:
+    pkg: plexmediaserver
+    update_cache: yes
+    state: latest
+
+  notify: restart plex
+  when:
+  - pms_allow_updates
+  - check_installed.rc == 0
