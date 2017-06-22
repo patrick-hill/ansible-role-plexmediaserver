@@ -1,21 +1,45 @@
 #!/usr/bin/env bash
 
 # Script is used to backup sensitive files to a compressed file
-archive_command="{{ pms_backup_command }}"
+archive_command="GZIP=-9 tar"
+archive_command_args="-cpzf"
 backup_filename={{ pms_backup_filename }}
-backup_dirs={{ pms_metadata_dir }} {{ pms_config_dir }}
+backup_dirs="{{ pms_metadata_dir }} {{ pms_config_dir }}"
 backup_target={{ pms_backup_target }}
+
+backup_excludes="{{ pms_backup_excludes }}"
+backup_excludes_metadata="{{ pms_backup_excludes_metadata }}"
+backup_dirs_metadata="{{ pms_backup_metadata_dirs }}"
 ############################3
 
 # Stop Plex Service
-echo "Stopping plex service..."
+echo "Stopping Plex Service..."
 systemctl stop plexmediaserver.service
+echo ''
 
-echo "Creating backup"
-$archive_command $backup_target/$backup_filename $backup_dirs
+echo "Creating Config Backup - Backup 1 of 2..."
+cmd="$archive_command $backup_excludes $backup_excludes_metadata $archive_command_args /tmp/${backup_filename}.tar.gz $backup_dirs"
+echo "Command is: ${cmd}"
+echo '' 
+eval $cmd
 
 # Start Plex Service
-echo "Starting plex service..."
+echo "Starting Plex Service..."
 systemctl start plexmediaserver.service
+echo ''
 
+
+echo "Creating Metadata Backup - Backup 2 of 2..."
+cmd="$archive_command $backup_excludes $archive_command_args /tmp/${backup_filename}-Metadata.tar.gz $backup_dirs_metadata"
+echo "Command is: ${cmd}"
+echo ''
+eval $cmd
+
+
+echo "Moving Backups to Target Directory"
+mv /tmp/${backup_filename}.tar.gz $backup_target
+mv /tmp/${backup_filename}-Metadata.tar.gz $backup_target
+
+
+echo 'Done'
 exit 0

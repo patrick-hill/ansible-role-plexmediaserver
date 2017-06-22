@@ -17,6 +17,11 @@ pms_backups_enabled: true
 pms_metadata_dir:       /var/lib/plexmediaserver
 pms_config_dir:         /etc/sysconfig/PlexMediaServer
 pms_backup_script_dir:  "/opt/scripts"
-pms_backup_command:     tar -cpzf
-pms_backup_filename:    plex-media-server-`date \+%Y\%m\%d-%T`.tar.gz
+pms_backup_filename:    plex-media-server-`date \+%Y-\%m-\%d__\%H-\%M-\%S`
 pms_backup_target:      "/_backups/plexmediaserver"
+
+pms_backup_root_dir:    '/var/lib/plexmediaserver/Library/Application\ Support/Plex\ Media\ Server'
+pms_backup_metadata_dirs: "{{ pms_backup_root_dir }}/Media {{ pms_backup_root_dir }}/Metadata"
+
+pms_backup_excludes:    "--exclude='{{ pms_backup_root_dir }}/Cache' --exclude='{{ pms_backup_root_dir }}/Logs\' --exclude='{{ pms_backup_root_dir }}/Crash\ Reports'"
+pms_backup_excludes_metadata: "--exclude='{{ pms_backup_root_dir }}/Media' --exclude='{{ pms_backup_root_dir }}/Metadata'"
