@@ -4,6 +4,7 @@ pms_user: 'plex'
 pms_group: 'plex'
 
 pms_restore_from_backups: false
+pms_restore_metadata: false
 pms_restore_file: ''
 pms_allow_updates: true
 

@@ -45,28 +45,14 @@
   become: yes
   when: not pms_install_from_repo
 
-- name: Stop PMS Service
-  service:
-    name: plexmediaserver
-    state: stopped
-  become: true
-
-- name: Update PMS service
-  lineinfile:
-    path: /etc/systemd/system/multi-user.target.wants/plexmediaserver.service
-    line: "{{ item.line }}"
-    regexp: "{{ item.regexp }}"
-  with_items:
-    - { line: '^User=*',  regexp: "User={{ pms_user }}" }
-    - { line: '^Group=*', regexp: "Group={{ pms_group }}" }
-  become: true
-
 # Restore
 - block:
 
     - name: Get files from backup_target
       find:
         paths: "{{ pms_backup_target }}"
+        patterns: '.*-\d\d\.tar\.gz' # Skips any ${filename}-Metadata.tar.gz files
+        use_regex: true
       register: found_files
 
     - name: Get latest backup file
@@ -76,34 +62,30 @@
     - name: Set Fact for restore_file
       set_fact:
         pms_restore_file: "{{ __pms_restore_file.path }}"
+        pms_restore_file_basename: "{{ __pms_restore_file.path|basename|splitext|first|splitext|first }}"
+
+    - name: Restore Backup --> Extract archive
+      unarchive:
+        src: "{{ item }}"
+        dest: /
+        remote_src: yes
+      become: yes
+      with_items:
+        - "{{ pms_restore_file }}" # Standard Configuration Backup
+        - "{{ pms_backup_target }}/{{ pms_restore_file_basename}}-Metadata.tar.gz" # Metadata Backup
 
   when: pms_restore_from_backups
 
 # Restore from File
-- block:
-
-    # Copy file locally as nfs extracts take forever
-    - name: Copy restore file locally
-      copy:
-        src: "{{ pms_restore_file }}"
-        dest: "/tmp/{{ pms_restore_file | basename }}"
-        remote_src: true
-    
-    - name: Restore Backup --> Extract archive
-      unarchive:
-        src: "/tmp/{{ pms_restore_file | basename }}"
-        dest: /
-        copy: no
-        owner: "{{ pms_user }}"
-        group: "{{ pms_group }}"
-      become: yes
-    
-    - name: Delete local restore file
-      file:
-        path: "/tmp/{{ pms_restore_file | basename }}"
-        state: absent
-
-  when: pms_restore_file is defined and pms_restore_file|default("") != ""
+- name: Restore Backup --> Extract archive
+  unarchive:
+    src: "{{ pms_restore_file }}"
+    dest: /
+    copy: no
+  become: yes
+  when:
+  - not pms_restore_from_backups
+  - pms_restore_file is defined and pms_restore_file|default("") != ""
 
 - name: Enable service
   service: 
