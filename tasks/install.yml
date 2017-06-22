@@ -45,7 +45,13 @@
   become: yes
   when: not pms_install_from_repo
 
-- name: Update service
+- name: Stop PMS Service
+  service:
+    name: plexmediaserver
+    state: stopped
+  become: true
+
+- name: Update PMS service
   lineinfile:
     path: /etc/systemd/system/multi-user.target.wants/plexmediaserver.service
     line: "{{ item.line }}"
@@ -53,39 +59,55 @@
   with_items:
     - { line: '^User=*',  regexp: "User={{ pms_user }}" }
     - { line: '^Group=*', regexp: "Group={{ pms_group }}" }
-  become: yes
+  become: true
 
 # Restore
 - block:
 
-  - name: Get files from backup_target
-    find:
-      paths: "{{ pms_backup_target }}"
-    register: found_files
+    - name: Get files from backup_target
+      find:
+        paths: "{{ pms_backup_target }}"
+      register: found_files
 
-  - name: Get latest backup file
-    set_fact:
-      __pms_restore_file: "{{ found_files.files | sort(attribute='mtime',reverse=true) | first  }}"
+    - name: Get latest backup file
+      set_fact:
+        __pms_restore_file: "{{ found_files.files | sort(attribute='mtime',reverse=true) | first  }}"
 
-  - name: Set Fact for restore_file
-    set_fact:
-      pms_restore_file: "{{ __pms_restore_file.path }}"
+    - name: Set Fact for restore_file
+      set_fact:
+        pms_restore_file: "{{ __pms_restore_file.path }}"
 
   when: pms_restore_from_backups
 
 # Restore from File
-- name: Restore Backup --> Extract archive
-  unarchive:
-    src: "{{ pms_restore_file }}"
-    dest: /
-    copy: no
-    owner: "{{ pms_user }}"
-    group: "{{ pms_group }}"
-  become: yes
+- block:
+
+    # Copy file locally as nfs extracts take forever
+    - name: Copy restore file locally
+      copy:
+        src: "{{ pms_restore_file }}"
+        dest: "/tmp/{{ pms_restore_file | basename }}"
+        remote_src: true
+    
+    - name: Restore Backup --> Extract archive
+      unarchive:
+        src: "/tmp/{{ pms_restore_file | basename }}"
+        dest: /
+        copy: no
+        owner: "{{ pms_user }}"
+        group: "{{ pms_group }}"
+      become: yes
+    
+    - name: Delete local restore file
+      file:
+        path: "/tmp/{{ pms_restore_file | basename }}"
+        state: absent
+
   when: pms_restore_file is defined and pms_restore_file|default("") != ""
 
 - name: Enable service
   service: 
-    name: plexmediaserver.service
+    name: plexmediaserver
     enabled: yes
-  notify: start plex
+    state: reloaded
+  become: true

@@ -5,6 +5,7 @@
   command: yum list installed plexmediaserver
   register: check_installed
   failed_when: check_installed.rc > 1
+  changed_when: check_installed.rc > 1
 
 - name: CentOS Install
   include: "install.yml"
@@ -23,7 +24,7 @@
     pkg: plexmediaserver
     update_cache: yes
     state: latest
-
+  become: true
   notify: restart plex
   when:
   - pms_allow_updates
