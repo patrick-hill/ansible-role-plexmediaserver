@@ -3,6 +3,8 @@
 
 - name: Check if installed
   command: yum list installed plexmediaserver
+  args:
+    warn: false
   register: check_installed
   failed_when: check_installed.rc > 1
   changed_when: check_installed.rc > 1
@@ -16,8 +18,7 @@
 
 - name: Configure PMS Backups
   include: "backups.yml"
-  when:
-    - pms_backups_enabled
+  when: pms_backups_enabled
 
 - name: Update PMS
   yum:
